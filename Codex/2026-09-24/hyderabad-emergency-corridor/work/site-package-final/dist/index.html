@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#071411" />
+    <meta name="description" content="A deterministic Hyderabad emergency green-corridor simulation for stakeholder workshops." />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23081411'/%3E%3Cpath d='M27 11h10v16h16v10H37v16H27V37H11V27h16z' fill='%23F5C451'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://unpkg.com" crossorigin />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <link rel="stylesheet" href="./styles.css" />
+    <title>Hyderabad Green Corridor Lab</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Hyderabad Green Corridor Lab home">
+        <span class="brand-mark" aria-hidden="true">+</span>
+        <span><strong>Green Corridor</strong><small>Hyderabad response lab</small></span>
+      </a>
+      <div class="scenario-heading">
+        <span class="eyebrow">LIVE WORKSHOP · SIMULATED</span>
+        <h1>NIMS → Osmania General Hospital</h1>
+      </div>
+      <nav class="view-switch" aria-label="Application view">
+        <button class="segmented active" data-view="command">Command</button>
+        <button class="segmented" data-view="unit">Unit view</button>
+      </nav>
+    </header>
+
+    <main id="command-view" class="workspace">
+      <aside class="control-rail" aria-label="Scenario controls">
+        <div class="section-heading">
+          <span class="section-number">01</span>
+          <div><p>Scenario</p><span>Deterministic seed HYD-07</span></div>
+        </div>
+
+        <label class="field-label" for="corridor">Corridor</label>
+        <select id="corridor">
+          <option value="nims-ogh">NIMS → Osmania General</option>
+          <option value="apollo-ogh">Apollo Jubilee Hills → OGH</option>
+          <option value="secunderabad-gandhi">Secunderabad → Gandhi Hospital</option>
+        </select>
+        <div class="placement-tools" role="group" aria-label="Place route endpoints">
+          <button id="place-unit" data-place="unit">Place unit</button>
+          <button id="place-incident" data-place="incident">Place destination</button>
+        </div>
+        <p id="placement-help" class="placement-help">Choose a corridor or place its endpoints on the map.</p>
+
+        <label class="field-label">Traffic preset</label>
+        <div class="choice-grid" id="traffic-preset" role="group" aria-label="Traffic preset">
+          <button data-traffic="offpeak">Off-peak</button>
+          <button class="active" data-traffic="normal">Normal</button>
+          <button data-traffic="peak">Peak</button>
+        </div>
+
+        <div class="field-row">
+          <div><span class="field-label">Road closure</span><small>Lakdikapul approach</small></div>
+          <button id="closure-toggle" class="switch" role="switch" aria-checked="false"><span></span></button>
+        </div>
+
+        <label class="field-label" for="signal-failure">Unavailable signal</label>
+        <select id="signal-failure">
+          <option value="">None</option>
+          <option value="J2">J2 · Khairatabad</option>
+          <option value="J3">J3 · Lakdikapul</option>
+          <option value="J4">J4 · Assembly</option>
+          <option value="J5">J5 · Abids</option>
+        </select>
+
+        <button id="start-run" class="primary-action"><span>Start comparison</span><span aria-hidden="true">→</span></button>
+        <div class="transport-controls">
+          <button id="pause-run" disabled>Pause</button>
+          <button id="reset-run">Reset</button>
+          <button id="replay-run">Replay</button>
+        </div>
+
+        <details class="integration-panel">
+          <summary>Optional notification webhook</summary>
+          <label for="webhook-url">Make.com URL</label>
+          <input id="webhook-url" type="url" placeholder="https://hook…" />
+          <p>Start/completion notices only. Never used for signal control.</p>
+        </details>
+      </aside>
+
+      <section class="map-stage" aria-label="Hyderabad corridor simulation">
+        <div id="map" role="application" aria-label="Hyderabad route map"></div>
+        <div id="fallback-map" class="fallback-map" aria-label="Offline corridor map">
+          <div class="fallback-roads"></div>
+          <div class="fallback-route"></div>
+          <span class="fallback-label start">NIMS</span>
+          <span class="fallback-label end">OGH</span>
+          <p>Offline schematic · Hyderabad corridor coordinates retained</p>
+        </div>
+        <div class="map-overlay top-left">
+          <span class="status-dot"></span>
+          <div><strong id="run-state">READY</strong><small>Baseline + optimized</small></div>
+        </div>
+        <div class="map-overlay top-right legend">
+          <span><i class="vehicle baseline"></i>Baseline</span>
+          <span><i class="vehicle optimized"></i>Optimized</span>
+          <span><i class="vehicle traffic"></i>Simulated traffic</span>
+          <span><i class="route-key"></i>Selected route</span>
+        </div>
+        <div class="attribution-fallback">Map data © OpenStreetMap contributors · Simulation overlay</div>
+      </section>
+
+      <aside class="insight-rail">
+        <div class="section-heading">
+          <span class="section-number">02</span>
+          <div><p>Run comparison</p><span>Simulated estimates</span></div>
+        </div>
+        <div class="metric-hero">
+          <span>Projected time saved</span>
+          <strong id="time-saved">—</strong>
+          <small id="saving-percent">Start a run to compare</small>
+        </div>
+        <div class="comparison-table" role="table" aria-label="Comparison metrics">
+          <div role="row" class="table-head"><span>Metric</span><span>Baseline</span><span>Optimized</span></div>
+          <div role="row"><span>Response</span><strong id="baseline-response">—</strong><strong id="optimized-response">—</strong></div>
+          <div role="row"><span>Stopped</span><strong id="baseline-stopped">—</strong><strong id="optimized-stopped">—</strong></div>
+          <div role="row"><span>Stops</span><strong id="baseline-stops">—</strong><strong id="optimized-stops">—</strong></div>
+          <div role="row"><span>Delay / junction</span><strong id="baseline-junction-delay">—</strong><strong id="optimized-junction-delay">—</strong></div>
+          <div role="row"><span>Reroutes</span><strong id="baseline-reroutes">0</strong><strong id="optimized-reroutes">0</strong></div>
+          <div role="row"><span>Cross-traffic</span><strong id="baseline-cross">—</strong><strong id="optimized-cross">—</strong></div>
+          <div role="row"><span>Max recovery</span><strong id="baseline-recovery">—</strong><strong id="optimized-recovery">—</strong></div>
+        </div>
+        <div class="junction-card">
+          <div class="card-title"><span>Junction readiness</span><small id="armed-count">0 / 6 armed</small></div>
+          <div id="junction-list" class="junction-list"></div>
+        </div>
+      </aside>
+
+      <section class="timeline-panel">
+        <div class="timeline-header">
+          <div class="section-heading compact"><span class="section-number">03</span><div><p>Audit timeline</p><span>Controller acknowledgements & fallbacks</span></div></div>
+          <div class="timeline-actions"><button id="inject-roadblock" class="ghost-action">Roadblock now</button><button id="inject-failure" class="ghost-action">Simulate GPS loss</button></div>
+        </div>
+        <ol id="event-log" class="event-log" aria-live="polite"></ol>
+      </section>
+    </main>
+
+    <main id="unit-view" class="unit-view" hidden>
+      <section class="phone-shell">
+        <div class="phone-status"><span>HYD MED-12</span><strong id="unit-status">ASSIGNED</strong></div>
+        <div class="unit-map" id="unit-map">
+          <div class="unit-route"></div><span class="unit-vehicle">✚</span>
+        </div>
+        <div class="turn-card"><span>Next</span><strong id="next-turn">Continue toward Punjagutta Junction</strong><small id="distance-next">420 m · signal normal</small></div>
+        <div class="unit-grid">
+          <div><span>ETA</span><strong id="unit-eta">12:40</strong></div>
+          <div><span>Corridor</span><strong id="unit-corridor">Ready</strong></div>
+        </div>
+        <button id="share-location" class="primary-action">Use this phone’s location</button>
+        <p class="unit-note">Demo navigation only. Follow authorized dispatch and road rules.</p>
+      </section>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script type="module" src="./js/ui.js"></script>
+  </body>
+</html>
